@@ -1,0 +1,198 @@
+
+library(car)
+library(performance)
+library(tidyverse)
+library(psych)
+library(gendercoder)
+
+
+baseline <- read_csv("Complete_Baseline.csv")
+
+baseline <- baseline %>% 
+  mutate(intentionapp = (choc_approach_int_1 + 
+                         choc_approach_int_2 +
+                         choc_approach_int_3 +
+                         choc_approach_int_4 +
+                         choc_approach_int_5 +
+                         choc_approach_int_6)/6)
+baseline <- baseline %>% 
+  mutate(intentionav = (choc_avoid_int_1 + 
+                        choc_avoid_int_2 +
+                        choc_avoid_int_3 +
+                        choc_avoid_int_4 +
+                        choc_avoid_int_5 +
+                        choc_avoid_int_6)/6)
+
+cor.test(baseline$intentionav, baseline$intentionapp)
+
+baseline <- baseline %>% 
+  mutate(unsweetened_freq = case_when(
+    choc_ffq_1 == "Never" ~ 0,
+    choc_ffq_1 == "Once a month" ~ 1,
+    choc_ffq_1 == "2–3 times a month" ~ 2.5,
+    choc_ffq_1 == "Once a week" ~ 4,
+    choc_ffq_1 == "2 times a week" ~ 8,
+    choc_ffq_1 == "3-4 times a week" ~ 3.5*4,
+    choc_ffq_1 == "5-6 times a week" ~ 22,
+    choc_ffq_1 == "Once a day" ~ 30,
+    choc_ffq_1 == "2 + times a day" ~ 60)) %>% 
+  mutate(unsweetened_vol = case_when(
+    choc_ffq_1 == "Never" ~ 0,
+    choc_ffq_5 == "Less than ¼ cup (fun size bar)" ~ 0.25,
+    choc_ffq_5 == "¼ to 1 cup (standard size bar)" ~ 0.625, 
+    choc_ffq_5 == "More than 1 cup (1/2 block of chocolate)" ~ 1
+  )) %>% 
+  mutate(unsweetened_totalvolume = unsweetened_freq * unsweetened_vol) %>% 
+  mutate(wmd_freq = case_when(
+    choc_ffq_2 == "Never" ~ 0,
+    choc_ffq_2 == "Once a month" ~ 1,
+    choc_ffq_2 == "2–3 times a month" ~ 2.5,
+    choc_ffq_2 == "Once a week" ~ 4,
+    choc_ffq_2 == "2 times a week" ~ 8,
+    choc_ffq_2 == "3-4 times a week" ~ 3.5*4,
+    choc_ffq_2 == "5-6 times a week" ~ 22,
+    choc_ffq_2 == "Once a day" ~ 30,
+    choc_ffq_2 == "2 + times a day" ~ 60)) %>% 
+  mutate(wmd_vol = case_when(
+    choc_ffq_2 == "Never" ~ 0,
+    choc_ffq_6 == "Less than ¼ cup (fun size bar)" ~ 0.25,
+    choc_ffq_6 == "¼ to 1 cup (standard size bar)" ~ 0.625, 
+    choc_ffq_6 == "More than 1 cup (1/2 block of chocolate)" ~ 1
+  )) %>% 
+  mutate(wmd_totalvolume = wmd_freq * wmd_vol) %>% 
+  mutate(cake_freq = case_when(
+    choc_ffq_3 == "Never" ~ 0,
+    choc_ffq_3 == "Once a month" ~ 1,
+    choc_ffq_3 == "2–3 times a month" ~ 2.5,
+    choc_ffq_3 == "Once a week" ~ 4,
+    choc_ffq_3 == "2 times a week" ~ 8,
+    choc_ffq_3 == "3-4 times a week" ~ 3.5*4,
+    choc_ffq_3 == "5-6 times a week" ~ 22,
+    choc_ffq_3 == "Once a day" ~ 30,
+    choc_ffq_3 == "2 + times a day" ~ 60)) %>% 
+  mutate(cake_vol = case_when(
+    choc_ffq_3 == "Never" ~ 0,
+    choc_ffq_7 == "Less than 1 slice or 3 cookies" ~ 0.25,
+    choc_ffq_7 == "1 slice or 3 cookies" ~ 0.625, 
+    choc_ffq_7 == "More than 1 slice or 3 cookies" ~ 1
+  )) %>% 
+  mutate(cake_totalvolume = cake_freq * cake_vol) %>% 
+  mutate(ice_freq = case_when(
+    choc_ffq_4 == "Never" ~ 0,
+    choc_ffq_4 == "Once a month" ~ 1,
+    choc_ffq_4 == "2–3 times a month" ~ 2.5,
+    choc_ffq_4 == "Once a week" ~ 4,
+    choc_ffq_4 == "2 times a week" ~ 8,
+    choc_ffq_4 == "3-4 times a week" ~ 3.5*4,
+    choc_ffq_4 == "5-6 times a week" ~ 22,
+    choc_ffq_4 == "Once a day" ~ 30,
+    choc_ffq_4 == "2 + times a day" ~ 60)) %>% 
+  mutate(ice_vol = case_when(
+    choc_ffq_4 == "Never" ~ 0,
+    choc_ffq_8 == "Less than 1 cup" ~ 0.25,
+    choc_ffq_8 == "1 to 2 cups" ~ 0.625, 
+    choc_ffq_8 == "More than 2 cups" ~ 1
+  )) %>% 
+  mutate(ice_totalvolume = ice_freq * ice_vol) %>%
+  mutate(choc_total_volume = unsweetened_totalvolume + wmd_totalvolume + 
+           cake_totalvolume + ice_totalvolume) %>%
+  mutate(choc_total_freq = unsweetened_freq + wmd_freq + 
+           cake_freq + ice_freq)
+
+regvolume <- lm(choc_total_volume ~ intentionapp + intentionav, data = baseline)
+apaTables::apa.reg.table(regvolume, filename = "totalvolume.doc")
+
+regfreq <- lm(choc_total_freq ~ intentionapp + intentionav, data = baseline)
+apaTables::apa.reg.table(regfreq, filename = "totalfreq.doc")
+
+cor.test(baseline$intentionapp, baseline$choc_total_volume)
+cor.test(baseline$intentionapp, baseline$choc_total_freq)
+cor.test(baseline$intentionav, baseline$choc_total_volume)
+cor.test(baseline$intentionav, baseline$choc_total_freq)
+
+table(baseline$gender) 
+
+new_dictionary <- c(`My sex is female` = "woman")
+
+baseline <- baseline %>% 
+  mutate(genderrecode = recode_gender(gender, dictionary = c(manylevels_en, 
+        new_dictionary), retain_unmatched = TRUE))
+
+mean(baseline$Duration)/60
+
+baseline %>% select(choc_approach_int_1:choc_approach_int_6) %>% 
+  psych::alpha()
+
+baseline %>% select(choc_avoid_int_1:choc_avoid_int_6) %>% 
+  psych::alpha()
+
+table(baseline$genderrecode)
+
+mean(baseline$age)
+sd(baseline$age)
+table(baseline$country)
+table(baseline$education)
+
+plot(baseline$intentionav, baseline$intentionapp)
+
+model <- lm(choc_total_freq ~ intentionav + intentionapp , data = baseline)
+summary(model)
+
+modeltwo <- lm(choc_total_volume ~ intentionav + intentionapp , data = baseline)
+summary(modeltwo)
+
+#assumptions testing frequency
+
+residuals <- as.data.frame(model$residuals)
+  augments <- broom::augment(model)
+    min(augments$.std.resid)
+    max(augments$.std.resid)
+    
+augments %>% 
+  filter(.std.resid > 3.96 | .std.resid < -3.96)
+
+augments %>% 
+  filter(.cooksd > 1)
+
+hist(augments$.std.resid)
+
+durbinWatsonTest(model)
+
+check_collinearity(model)
+
+check_homogeneity(model)
+
+check_model(model)
+
+ols_vif_tol(model)
+
+par(mfrow = c(2, 2))
+plot(model)
+
+#assumptions testing volume
+
+residuals <- as.data.frame(modeltwo$residuals)
+augments <- broom::augment(modeltwo)
+min(augments$.std.resid)
+max(augments$.std.resid)
+
+augments %>% 
+  filter(.std.resid > 3.96 | .std.resid < -3.96)
+
+augments %>% 
+  filter(.cooksd > 1)
+
+hist(augments$.std.resid)
+
+durbinWatsonTest(modeltwo)
+
+check_collinearity(modeltwo)
+
+check_homogeneity(modeltwo)
+
+check_model(modeltwo)
+
+ols_vif_tol(modeltwo)
+
+par(mfrow = c(2, 2))
+plot(modeltwo)
